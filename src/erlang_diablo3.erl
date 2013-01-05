@@ -6,14 +6,22 @@
 
 -export([getProfile/1]).
 
+-include("erlang_diablo3.hrl").
+
 
 init() ->
-    inets:start().
-
+    case application:start(inets) of
+        ok -> ok;
+        {error, {already_started, inets}} -> ok;
+        Error -> Error
+    end.
 
 getProfile(BattleTag) ->
-    Url = lists:concat(["http://us.battle.net/api/d3/profile/", 
-            re:replace(BattleTag,"#","-",[global,{return,list}]), "/"]),
-    {ok, {{_Version, 200, _Reason}, _Headers, Body}} =
-        httpc:request(get, {Url, []}, [], []),
-    Body.
+    ApiBattleTag = re:replace(BattleTag, "#", "-", [global, {return, list}]),
+    Url = lists:concat(["http://us.battle.net/api/d3/profile/", ApiBattleTag, "/"]),
+    case httpc:request(Url) of
+        {ok, {_, _, Response}} ->
+            #profile{json=Response};
+        {error, Reason} ->
+            {error, Reason}
+    end.
